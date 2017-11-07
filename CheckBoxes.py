@@ -1,18 +1,19 @@
 """
-:filename:               CheckBoxes.py
-:author:                  frederic.gabel@tordivel.no
-:requirements:       Scorpion 9.0.0.494 or higher
-:copyright:             2000-2017 Tordivel AS
-:license:                 Tordivel AS' Scorpion Python Plugin License
+:filename:                    CheckBoxes.py
+:author:                      frederic.gabel@tordivel.no
+:requirements:                Scorpion 9.0.0.494 or higher
+:copyright:                   2000-2017 Tordivel AS
+:license:                     Tordivel AS' Scorpion Python Plugin License
 
 Checkboxes creation plugin - To quickly integrate checkboxes with callback to custom function
 
 ::
+  1.0.0.3, 07oct2017, FG: Checkbox add, remove, update functions
   1.0.0.2, 03oct2017, FG: Name change, add verbose + printdebug
   1.0.0.1, 02oct2017, FG: requirements : Scorpion 9.0.0.493 or higher
 """
 
-__version__ = '1.0.0.2'
+__version__ = '1.0.0.3'
 import os
 from Scorpion import PluginNotify,GetControlByHandle,ExecuteCmd,GetTool,SelectTagname,SpbDialog,PluginChanged
 
@@ -32,12 +33,12 @@ class CheckBoxes(object):
   def init(self):
     """ reset all content """
     self.cntr.deleteControls()                  #delete previous added controls if any
-    self.count = 1                                   #number of checkboxes
-    self.checkboxes=[]                           #list of buttons
-    self.cmds=[]                                     #list of commands
-    self.params=[]                                  #list of commands
-    self.checkboxWidth = 100               #width of each checkbox
-    self.verbose = 0                               #debug level - null by default
+    self.count = 1                              #number of checkboxes
+    self.checkboxes=[]                          #list of buttons
+    self.cmds=[]                                #list of commands
+    self.params=[]                              #list of commands
+    self.checkboxWidth = 100                    #width of each checkbox
+    self.verbose = 1                            #debug level - null by default
     self.addCheckBox('Show picking', 'script', 'showPicking()')
     
 
@@ -55,6 +56,7 @@ class CheckBoxes(object):
       spb.setText('checkbox%d.caption'%(i+1),self.checkboxes[i].caption)
       spb.setText('checkbox%d.command'%(i+1),self.cmds[i])
       spb.setText('checkbox%d.params'%(i+1),self.params[i])
+    self.printDebug(2, 'End getConfig---')
     return spb.xml
 
 
@@ -62,30 +64,32 @@ class CheckBoxes(object):
     ''' set plugin configuration from string '''
     from SPB import CreateSpb
     self.printDebug(2, '---setConfig')
-    self.init()
     spb=CreateSpb(value)
     if spb.getText('type') == self.__class__.__name__:
       if spb.isEntry('checkbox.width'):
         self.checkboxWidth = spb.getInt('checkbox.width')
       if spb.isEntry('verbose'):
         self.verbose = spb.getInt('verbose')
-      for i in range(spb.getInt('count')):
-        #checkbox = self.addCheckBox(spb.getText('checkbox%d.caption'%(i+1)), spb.getText('checkbox%d.command'%(i+1)), spb.getText('checkbox%.params'%(i+1)))
-        #checkbox = self.addCheckBox(spb.getText('checkbox%d.caption'%i), str(10*i+1), str(20*i+1))
-        self.checkboxes[i].caption = spb.getText('checkbox%d.caption'%(i+1))
-        self.cmds[i] = spb.getText('checkbox%d.command'%(i+1))
-        self.params[i] = spb.getText('checkbox%d.params'%(i+1))
+      # If the count entered is greater than the current count - ADD checkboxes
+      if spb.getInt('count') > self.count:                  
+        for j in range (self.count, spb.getInt('count')):
+          checkbox = self.addCheckBox('checkbox%i'%(j+1),'a','b')
+          self.printDebug(1, '\tadd checkbox %s'%checkbox.name)
+      # If the count entered is less than the current count - DELETE checkboxes
+      elif spb.getInt('count') < self.count:                
+        for k in range(self.count, spb.getInt('count'), -1):
+          self.printDebug(1,'delete checkbox : %s'%self.checkboxes[k-1].name)
+          self.cntr.deleteControl(self.checkboxes[k-1].name)
+          del self.checkboxes[k-1]
+          self.count = spb.getInt('count')
+    # Update the current controls
+    for l in range(self.count):
+      self.checkboxes[l].caption = spb.getText('checkbox%d.caption'%(l+1))
+      self.cmds[l] = spb.getText('checkbox%d.command'%(l+1))
+      self.params[l] = spb.getText('checkbox%d.params'%(l+1))
     self.count = spb.getInt('count')
-    self.updateControls()
     self.printDebug(2,'End setConfig---')
-
-    
-  def updateControls(self):
-    """ update the current controls """
-    print 'current number of checkboxes : ', self.count
-    if self.count<len(self.checkboxes):
-      print 'need to add checkboxes'
-      
+  
     
   def configure(self):
     ''' configure the plugin, return bool whether changed or not '''
